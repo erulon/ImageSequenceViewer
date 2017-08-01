@@ -6,19 +6,21 @@ import pickle
 class Viewer:
     def __init__(self):
         self.path = 'img'
+        self.prevClick = ''
+        self.nowClick = ''        
         self.thumbSize = (200, 200) # максимальный размер тамбнейликов
         self.previewSize = (500,500) # максимальный размер превьюшечки
+        self.counter = 5 # количество столбцов
         self.root = Tk() # создаем главное окно
+
         self.imageThumbnailFrame = Frame(self.root) # фрейм для тамбнейликов
         self.imagePreviewFrame = Frame(self.root) # фрейм для превьюшки
         self.previewLabel = Label(self.imagePreviewFrame)
-        self.prevClick = ''
-        self.nowClick = ''
+
         # сохраняем пути картинок всех
         self.imageFilenames = [os.path.join(self.path, file) for file in os.listdir(self.path)]
         # грузим картинки в Label-объекты, привязанные к фрейму для тамбнейликов
         
-
         self.imageBasenames = pickle.load( open("order.pic","rb"))
 
         if self.imageFilenames == self.imageBasenames:
@@ -41,19 +43,17 @@ class Viewer:
                     print("Deleted one: ", bimage)            
                     self.imageBasenames.remove(bimage) #
             self.imageFilenames = self.imageBasenames
-        #pickle.dump(self.imageFilenames, open("order.pic","wb"))
-
+        #pickle.dump(self.imageFilenames, open("order.pic","wb")) #сбросить базу данных
+        #баг возможно из-за русских букв
         
         self.imageThumbnailLabels = self.makeImageLabels(self.imageThumbnailFrame, self.imageFilenames, self.thumbSize)
-
         self.setImagePreviewLabel(self.imagePreviewFrame, self.imageFilenames[0], self.previewSize)
-
         self.previewLabel.pack() # запихиваем превьюшку в imagePreview
         self.previewLabel.name = "preview"
         self.previewLabel.bind("<1>", self.on_main_click)
+        
         self.packFrames() # запихиваем фреймы в главное окно
         self.packImages(self.imageThumbnailLabels) # запихиваем тамбнейлики в imageGrid
-
         
     def setImagePreviewLabel(self, window, file, size): # ставим картинку в Label для превью
         image = Image.open(file) # открываем картинку с помощью PIL
@@ -63,7 +63,7 @@ class Viewer:
         self.previewLabel.image = photoimage # Сохраняем референс (вот это глупо сделано, как по-моему, но так надо)
 
     def packFrames(self):
-        self.imageThumbnailFrame.pack(side='left') # зафигачиваем тамбнейлы слева
+        self.imageThumbnailFrame.pack(side='left', expand=True,fill=BOTH) # зафигачиваем тамбнейлы слева
         self.imagePreviewFrame.pack(side='right') # а превью справа
 
     def makeImageLabels(self, window, imageFiles, size):
@@ -82,13 +82,11 @@ class Viewer:
 
     def packImages(self, imageLabels):
         i = 0
-
         for label in imageLabels:
-            label.pack() # запихиваеееем
+            label.grid(row=(i//self.counter), column=(i - (i//self.counter)*self.counter)) # запихиваеееем
             label.path = self.imageFilenames[i]
             i = i+1
             label.bind("<1>", self.on_main_click)
-        i = 0
         
     def on_main_click(self, event):
         self.previewLabel.pack_forget()
@@ -106,29 +104,22 @@ class Viewer:
                 for text in self.imageFilenames:
                     print(text)
                 for label in self.imageThumbnailLabels:    
-                    label.pack_forget()
+                    label.grid_forget()
                 self.imageThumbnailLabels = self.makeImageLabels(self.imageThumbnailFrame, self.imageFilenames, self.thumbSize)
+                i = 0
                 for label in self.imageThumbnailLabels:
-                    label.pack() # запихиваеееем
-
+                    label.grid(row=(i//self.counter), column=(i - (i//self.counter)*self.counter)) # запихиваеееем
+                    i = i + 1
                 self.packImages(self.imageThumbnailLabels)
                 pickle.dump(self.imageFilenames, open("order.pic","wb"))
-
-                
             except ValueError:
                 pass
         self.setImagePreviewLabel(self.imagePreviewFrame, self.nowClick, self.previewSize)
         self.previewLabel.pack()
         self.previewLabel.bind("<1>", self.on_main_click)
 
-    def unpackThumbnails(self):
-        for label in self.imageThumbnailLabels:
-            label.pack_forget()
-
     def on_closing(self):
         pass
 
     def run(self):
-
         self.root.mainloop() # пошло выполнение программы
-
