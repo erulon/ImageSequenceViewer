@@ -2,20 +2,25 @@ from tkinter import *
 from PIL import Image, ImageTk
 import os
 import pickle
-
+from AImage import *
 
 
 class Viewer:
     def __init__(self):
 
-        #var
+        #main         var:
         self.path = 'img'
         self.prevClick = ''
         self.nowClick = ''        
         self.thumbSize = (200, 200) # максимальный размер тамбнейликов
         self.previewSize = (500,500) # максимальный размер превьюшечки
         self.counter = 5 # количество столбцов
-
+        #image merger var:
+        self._imageType = 'jpeg' #'png'
+        self._mask = '.jpg' #'.png'
+        self.mode = 'C' # "H" "V" "C"
+        self.columns = self.counter #По сколько склеивать
+        self.saveName = 'MImage'      
         self.root = Tk() # создаем главное окно
 
         self.imageThumbnailFrame = Canvas(self.root) # фрейм для тамбнейликов
@@ -69,7 +74,7 @@ class Viewer:
         
     def createButtons(self, widget):
         self.dShift = Button(widget, text="Down")
-        self.uShift = Button(widget, text="Up")
+        self.uShift = Button(widget, text="Merge")
         self.swapButton =  Button(widget, text="Swap")
         self.dShift.bind("<1>", self.downShift)
         self.uShift.bind("<1>", self.upShift)
@@ -82,7 +87,7 @@ class Viewer:
         self.gridForget(self.imageThumbnailLabels)
 
     def upShift(self, event):
-        self.imageThumbnailLabels = self.loadLabels(self.imageThumbnailFrame, self.imageFilenames, self.imageThumbnailLabels) #бинды слетают
+        self.mergeImages()
 
     def swap(self, event):
         self.previewLabel.pack_forget()
@@ -193,6 +198,35 @@ class Viewer:
         '''Reset the scroll region to encompass the inner frame'''
         #canvas.configure(scrollregion= canvas.bbox("all"))
         self.canvas.configure(scrollregion= self.canvas.bbox("all"))
+
+#image merger
+        
+    def getMode(self):
+        return self.mode
+
+    def mergeImages(self):
+        self.mergeManager(self.path, self._mask, self.saveName, self._imageType)
+            
+    def mergeManager(self, path, mask, saveName, imageType):
+        imageList = []
+        saveName += mask
+        for anyf in self.imageFilenames:
+            imageList.append(anyf)
+        """ No subfolders scan """
+        try:
+            for anyf in imageList:
+                im = AImage(anyf)
+
+        except FileNotFoundError:
+            pass
+
+        path = os.path.join(self.path, saveName)
+        for anyf in imageList:
+            print(anyf)
+        try:
+            im.mergeAll(path, imageType, color = 'white', mode = self.mode, columns = self.columns)
+        except UnboundLocalError:
+            print('В этой папке нет ', mask, ' изображений')                
 
     def run(self):
         self.root.mainloop() # пошло выполнение программы
