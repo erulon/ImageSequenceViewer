@@ -1,6 +1,7 @@
 from tkinter import *
 from PIL import Image, ImageTk
 import os
+import sys
 import pickle
 from AImage import *
 
@@ -20,7 +21,10 @@ class Viewer:
         self._mask = '.jpg' #'.png'
         self.mode = 'C' # "H" "V" "C"
         self.columns = self.counter #По сколько склеивать
-        self.saveName = 'MImage'      
+        self.saveName = 'MImage'
+
+        self.checkCmd()
+        
         self.root = Tk() # создаем главное окно
 
         self.imageThumbnailFrame = Canvas(self.root) # фрейм для тамбнейликов
@@ -64,6 +68,16 @@ class Viewer:
 
         self.canvas = Canvas(self.root, borderwidth=0, background="#ffffff")
         self.frame = self.Scrollbar(self.root, self.canvas)
+
+    def checkCmd(self):
+        try:
+            if sys.argv[1] == 'clear':
+                self.clearBase()
+        except IndexError:
+            pass
+
+    def clearBase(self):
+        pickle.dump([], open("order.pic","wb"))
         
     def packFrames(self):
         self.previewLabel.pack() # запихиваем превьюшку в imagePreview
@@ -73,9 +87,9 @@ class Viewer:
         self.createButtons(self.root) #param:frame
         
     def createButtons(self, widget):
-        self.dShift = Button(widget, text="Down")
+        self.dShift = Button(widget, text="QSwap")
         self.uShift = Button(widget, text="Merge")
-        self.swapButton =  Button(widget, text="Swap")
+        self.swapButton =  Button(widget, text="LazySwap")
         self.dShift.bind("<1>", self.downShift)
         self.uShift.bind("<1>", self.upShift)
         self.swapButton.bind("<1>", self.swap)
@@ -84,7 +98,32 @@ class Viewer:
         self.swapButton.pack()
 
     def downShift(self, event):
-        self.gridForget(self.imageThumbnailLabels)
+        #self.gridForget(self.imageThumbnailLabels)
+#        self.gridForgetId(self.imageThumbnailLabels, 4)
+#        print(self.imageFilenames[4])
+#        label = self.makeLabel(self.frame, self.imageFilenames[4], self.thumbSize)
+#        label.path = self.imageFilenames[4]
+#        label.bind("<1>", self.on_main_click)
+#        label.grid(row = 0, column = 4)
+#        print(label.path)
+        try:
+            if os.path.isfile(self.prevClick) and os.path.isfile(self.nowClick):
+                a = self.imageFilenames.index(self.prevClick)
+                b = self.imageFilenames.index(self.nowClick)
+                self.swapLabels(a,b)
+        except ValueError:
+            pass
+
+    def swapLabels(self, a, b):
+        self.imageThumbnailLabels[a].grid_forget()
+        self.imageThumbnailLabels[b].grid_forget()
+        label_a = self.makeLabel(self.frame, self.imageFilenames[a], self.thumbSize, a)
+        label_b = self.makeLabel(self.frame, self.imageFilenames[b], self.thumbSize, b)
+        label_a.grid(row=(b//self.counter), column=(b - (b//self.counter)*self.counter))
+        label_b.grid(row=(a//self.counter), column=(a - (a//self.counter)*self.counter))
+        self.imageFilenames[a], self.imageFilenames[b] = self.imageFilenames[b], self.imageFilenames[a]
+        self.imageThumbnailLabels[a], self.imageThumbnailLabels[b] = self.imageThumbnailLabels[b], self.imageThumbnailLabels[a]
+        pickle.dump(self.imageFilenames, open("order.pic", "wb"))
 
     def upShift(self, event):
         self.mergeImages()
@@ -120,6 +159,14 @@ class Viewer:
     def gridForget(self, labelsList):
         for label in labelsList:    
             label.grid_forget()
+
+    def gridForgetId(self, labelsList, id):
+        i = 0
+        for label in labelsList:
+            if i == id:
+                label.grid_forget()
+            i = i + 1
+
     
     def loadLabels(self, widget, fnames, labelsList):
         labelsList = self.makeImageLabels(widget, fnames, self.thumbSize)
@@ -150,6 +197,17 @@ class Viewer:
             imageLabels.append(label) # запихиваем получившийся лейбл в imageLabels
         return imageLabels # который и возвращаем
 
+    def makeLabel(self, window, imageFile, size, id):
+        image = Image.open(imageFile)  # открываем с помощью PIL
+        image.thumbnail(size, Image.ANTIALIAS)  # уменьшаем
+        photoimage = ImageTk.PhotoImage(image)  # конвертируем в формат TkInter
+        label = Label(window, image=photoimage)  # Делаем, собственно, лейбл
+        label.image = photoimage  #
+        label.path = self.imageFilenames[id]
+        label.bind("<1>", self.on_main_click)
+        self.imageThumbnailLabels[id] = label
+        return label
+
     def packImages(self, imageLabels):
         i = 0
         for label in imageLabels:
@@ -159,13 +217,15 @@ class Viewer:
             label.bind("<1>", self.on_main_click)
         
     def on_main_click(self, event):
+
         self.previewLabel.pack_forget()
         try:
             print(event.widget.path)
             self.prevClick = self.nowClick
             self.nowClick = event.widget.path
-        except AttributeError:
-            pass
+        except AttributeError: #клик по превью отличает по event.widget.path
+            im1 = Image.open(self.nowClick)
+            im1.show()
         self.setImagePreviewLabel(self.imagePreviewFrame, self.nowClick, self.previewSize)
         self.previewLabel.pack()
         self.previewLabel.bind("<1>", self.on_main_click)
